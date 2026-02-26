@@ -1,0 +1,310 @@
+{
+  "id": "24a93384-bd53-4ba9-b0c4-975f98b17b3b",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'officer'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {
+    "public.oos_trend_analysis_monthly": {
+      "columns": {
+        "year": {
+          "name": "year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "month": {
+          "name": "month",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "overall_oos_percentage": {
+          "name": "overall_oos_percentage",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fish_oos_percentage": {
+          "name": "fish_oos_percentage",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "shrimp_oos_percentage": {
+          "name": "shrimp_oos_percentage",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "best_performing": {
+          "name": "best_performing",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "worst_performing": {
+          "name": "worst_performing",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "definition": "\nwith Monthly_Data as (\n\t select\n        t1.year,\n        t1.month,\n        t1.plant,\n        t1.business_unit,\n        t1.kode_pakan,\n        sum(t1.ach_over_120) as total_ach_over_120\n    from oos_final t1\n    group by\n        t1.year,\n        t1.month,\n        t1.plant,\n        t1.business_unit,\n        t1.kode_pakan\t\n),\nMonthly_Data_2 as (\n\tselect \n\t\tt1.*,\n\t\tt2.total_do_bermasalah,\n\t\tt3.total_do,\n        (\n            case \n                when t1.total_ach_over_120 = 0\n                then (t2.total_do_bermasalah / EXTRACT(DAY FROM (DATE_TRUNC('month', MAKE_DATE(t1.year, t1.month, 1)) + INTERVAL '1 month - 1 day'))) / nullif(t3.total_do, 0)\n                else (t2.total_do_bermasalah / EXTRACT(DAY FROM (DATE_TRUNC('month', MAKE_DATE(t1.year, t1.month, 1)) + INTERVAL '1 month - 1 day')) * (t1.total_ach_over_120)) / nullif(t3.total_do, 0)\n            end\n        ) as oos_percentage        \n\tfrom Monthly_Data t1\n\tleft join out_of_stock_do_bermasalah t2\n\t\ton t1.year = t2.year\n\t\tand t1.month = t2.month\n\t\tand t1.plant = t2.plant\n\t\tand t1.business_unit = t2.business_unit\n\t\tand t1.kode_pakan = t2.kode_pakan\n\tleft join out_of_stock_total_do t3\n\t\ton t1.year = t3.year\n\t\tand t1.month = t3.month\n\t\tand t1.plant = t3.plant\n\t\tand t1.business_unit = t3.business_unit\n\torder by t1.year, t1.month, t1.plant, t1.business_unit, t1.kode_pakan\t\n),\nMonthly_OOS as (\n\tselect\n\t\tt1.year,\n\t\tt1.month,\n\t\tsum(t1.oos_percentage) as overall_oos_percentage,\t\t\n\t\t(sum(t1.oos_percentage) filter (where t1.business_unit = 'fish')) as fish_oos_percentage,\n\t\t(sum(t1.oos_percentage) filter (where t1.business_unit = 'shrimp')) as shrimp_oos_percentage\t\t\n\tfrom Monthly_Data_2 t1\n\tgroup by \n\t\tt1.year, \n\t\tt1.month\n),\nPlant_BU_OOS as (\n\tselect\n\t\tt1.year,\n\t\tt1.month,\n\t\tconcat(t1.plant, ' - ', initcap(t1.business_unit)) as plant_bu_combined,\n\t\tsum(t1.oos_percentage) as oos_value\n\tfrom Monthly_Data_2 t1\n\tgroup by t1.year, t1.month, t1.plant, t1.business_unit\n),\nRanked_Performance as (\n\tselect\n\t\tt1.*,\n\t\trank() over (partition by t1.year, t1.month order by t1.oos_value asc) as rank_best,\n\t\trank() over (partition by t1.year, t1.month order by t1.oos_value desc) as rank_worst\n\tfrom Plant_BU_OOS t1\n),\nAggregated_Best_Worst as (\n\tselect\n\t\tt1.year,\n\t\tt1.month,\n\t\tstring_agg(plant_bu_combined, ', ' order by plant_bu_combined asc) filter (where rank_best = 1) as best_performing,\n\t\tstring_agg(plant_bu_combined, ', ' order by plant_bu_combined asc) filter (where rank_worst = 1) as worst_performing\n\tfrom Ranked_Performance t1\n\tgroup by t1.year, t1.month\n)\n\nselect\n\tt1.year,\n\tt1.month,\n\tt1.overall_oos_percentage,\n\tt1.fish_oos_percentage,\n\tt1.shrimp_oos_percentage,\n\tt2.best_performing,\n\tt2.worst_performing\nfrom Monthly_OOS t1\ninner join Aggregated_Best_Worst t2\n\ton t1.year = t2.year\n\tand t1.month = t2.month\norder by\n\tt1.year,\n\tt1.month\n",
+      "name": "oos_trend_analysis_monthly",
+      "schema": "public",
+      "isExisting": false,
+      "materialized": false
+    },
+    "public.oos_final": {
+      "columns": {
+        "year": {
+          "name": "year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "month": {
+          "name": "month",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "week": {
+          "name": "week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "plant": {
+          "name": "plant",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "business_unit": {
+          "name": "business_unit",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kode_pakan": {
+          "name": "kode_pakan",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stock_pakan": {
+          "name": "stock_pakan",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kebutuhan_pakan": {
+          "name": "kebutuhan_pakan",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kirim": {
+          "name": "kirim",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hasil_produksi": {
+          "name": "hasil_produksi",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ach": {
+          "name": "ach",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ach_over_120": {
+          "name": "ach_over_120",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "definition": "\nwith final_table as (\n\tselect\n    \t*,\n    \tround(oos.kirim / nullif(oos.kebutuhan_pakan, 0) * 100, 0) as ach,\n    \t(\n    \t\tcase\n    \t\t\twhen round(oos.kirim / nullif(oos.kebutuhan_pakan, 0) * 100, 0) > 120 then 1 \n    \t\t\telse 0\n    \t\tend\n    \t) as ach_over_120\n\tfrom out_of_stock oos\n)\n\nselect * from final_table\n",
+      "name": "oos_final",
+      "schema": "public",
+      "isExisting": false,
+      "materialized": false
+    },
+    "public.oos_plant_performance_detail_monthly": {
+      "columns": {
+        "plant": {
+          "name": "plant",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "business_unit": {
+          "name": "business_unit",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "year": {
+          "name": "year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "jan": {
+          "name": "jan",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "feb": {
+          "name": "feb",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mar": {
+          "name": "mar",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "apr": {
+          "name": "apr",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "may": {
+          "name": "may",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "jun": {
+          "name": "jun",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "jul": {
+          "name": "jul",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "aug": {
+          "name": "aug",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sep": {
+          "name": "sep",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oct": {
+          "name": "oct",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nov": {
+          "name": "nov",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dec": {
+          "name": "dec",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "total_oos_percentage_ytd": {
+          "name": "total_oos_percentage_ytd",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "definition": "\nwith Code_Summary as (\n    select\n        t1.year,\n        t1.month,\n        t1.plant,\n        t1.business_unit,\n        t1.kode_pakan,\n        sum(t1.kebutuhan_pakan) as kebutuhan_pakan_monthly,\n        sum(t1.kirim) as sales_monthly,\n        sum(t1.hasil_produksi) as hasil_produksi_monthly,\n        avg(t1.kirim) as rata_rata_kirim,\n        sum(t1.ach_over_120) as total_ach_over_120\n    from oos_final t1\n    group by\n        t1.year,\n        t1.month,\n        t1.plant,\n        t1.business_unit,\n        t1.kode_pakan\n),\nCode_Summary_2 as (\n\tselect \n\t\tt1.*,\n\t\tt2.total_do_bermasalah,\n\t\tt3.total_do,\n\t\t(t1.sales_monthly / nullif(t2.total_do_bermasalah, 0)) as tiap_do,\n        (\n            case \n                when t1.total_ach_over_120 = 0\n                then (t2.total_do_bermasalah / EXTRACT(DAY FROM (DATE_TRUNC('month', MAKE_DATE(t1.year, t1.month, 1)) + INTERVAL '1 month - 1 day')))\n                else (t2.total_do_bermasalah / EXTRACT(DAY FROM (DATE_TRUNC('month', MAKE_DATE(t1.year, t1.month, 1)) + INTERVAL '1 month - 1 day')) * (t1.total_ach_over_120))\n            end\n        ) as jumlah_do_ach_over_120,\n        (\n            case \n                when t1.total_ach_over_120 = 0\n                then (t2.total_do_bermasalah / EXTRACT(DAY FROM (DATE_TRUNC('month', MAKE_DATE(t1.year, t1.month, 1)) + INTERVAL '1 month - 1 day'))) * (t1.sales_monthly / nullif(t2.total_do_bermasalah, 0))\n                else (t2.total_do_bermasalah / EXTRACT(DAY FROM (DATE_TRUNC('month', MAKE_DATE(t1.year, t1.month, 1)) + INTERVAL '1 month - 1 day')) * (t1.total_ach_over_120)) * (t1.sales_monthly / nullif(t2.total_do_bermasalah, 0))\n            end\n        ) as total_do_ton,\n        (\n            case \n                when t1.total_ach_over_120 = 0\n                then (t2.total_do_bermasalah / EXTRACT(DAY FROM (DATE_TRUNC('month', MAKE_DATE(t1.year, t1.month, 1)) + INTERVAL '1 month - 1 day'))) / nullif(t3.total_do, 0)\n                else (t2.total_do_bermasalah / EXTRACT(DAY FROM (DATE_TRUNC('month', MAKE_DATE(t1.year, t1.month, 1)) + INTERVAL '1 month - 1 day')) * (t1.total_ach_over_120)) / nullif(t3.total_do, 0)\n            end\n        ) as oos_percentage        \n\tfrom Code_Summary t1\n\tleft join out_of_stock_do_bermasalah t2\n\t\ton t1.year = t2.year\n\t\tand t1.month = t2.month\n\t\tand t1.plant = t2.plant\n\t\tand t1.business_unit = t2.business_unit\n\t\tand t1.kode_pakan = t2.kode_pakan\n\tleft join out_of_stock_total_do t3\n\t\ton t1.year = t3.year\n\t\tand t1.month = t3.month\n\t\tand t1.plant = t3.plant\n\t\tand t1.business_unit = t3.business_unit\n\torder by t1.year, t1.month, t1.plant, t1.business_unit, t1.kode_pakan\n),\nBU_Monthly_OOS as (\n\tselect\n\t\tt1.year,\n\t\tt1.month,\n\t\tt1.plant,\n\t\tt1.business_unit,\n\t\tsum(t1.kebutuhan_pakan_monthly) as total_kebutuhan_pakan,\n\t\tsum(t1.sales_monthly) as total_sales,\n\t\tsum(t1.hasil_produksi_monthly) as total_produksi,\n\t\tavg(t1.rata_rata_kirim) as avg_rata_rata_kirim,\n\t\tmax(t1.total_do) as total_do,\n\t\tsum(t1.tiap_do) as total_tiap_do,\n\t\tsum(t1.jumlah_do_ach_over_120) as total_do_ach_over_120,\n\t\tsum(t1.total_do_ton) as total_do_ton,\n\t\tsum(t1.oos_percentage) as total_oos_percentage\n\tfrom Code_Summary_2 t1\n\tgroup by \n\t\tt1.year, \n\t\tt1.month, \n\t\tt1.plant, \n\t\tt1.business_unit\n\n),\nMax_Month as (\n\tselect\n\t\tt1.year,\n\t\tt1.plant,\n\t\tt1.business_unit,\n\t\tmin(month) as bulan_awal,\n\t\tmax(month) as bulan_akhir\n\tfrom Code_Summary t1\n\tgroup by\n\t\tt1.year,\n\t\tt1.plant,\n\t\tt1.business_unit\n),\noos_do_bermasalah as (\n\tselect\n\t\tt1.year,\n\t\tt1.plant,\n\t\tt1.business_unit,\n\t\tt1.kode_pakan,\n\t\tsum(t1.total_do_bermasalah) as total_do_bermasalah\n\tfrom out_of_stock_do_bermasalah t1\n\tgroup by\n\t\tt1.year,\n\t\tt1.plant,\n\t\tt1.business_unit,\n\t\tt1.kode_pakan\n),\noos_total_do as (\n\tselect\n\t\tt1.year,\n\t\tt1.plant,\n\t\tt1.business_unit,\n\t\tsum(t1.total_do) as total_do\n\tfrom out_of_stock_total_do t1\n\tgroup by\n\t\tt1.year,\n\t\tt1.plant,\n\t\tt1.business_unit\n),\nCode_Summary_YTD as (\n\tselect \n\t\tt1.year,\n\t\tt1.plant,\n\t\tt1.business_unit,\n\t\tt1.kode_pakan,\n        sum(t1.kebutuhan_pakan) as kebutuhan_pakan_yearly,\n        sum(t1.kirim) as sales_yearly,\n        sum(t1.hasil_produksi) as hasil_produksi_yearly,\n        avg(t1.kirim) as rata_rata_kirim,\n        sum(t1.ach_over_120) as total_ach_over_120\n    from oos_final t1\n    inner join Max_Month mm\n    \ton t1.year = mm.year\n    \tand t1.plant = mm.plant\n    \tand t1.business_unit = mm.business_unit\n    where t1.month <= mm.bulan_akhir\n    group by\n        t1.year,\n        t1.plant,\n        t1.business_unit,\n        t1.kode_pakan\t\t\n),\nCode_Summary_YTD_2 as (\n\tselect \n\t\tt1.*,\n\t\tt2.total_do_bermasalah,\n\t\tt3.total_do,\n\t\t(t1.sales_yearly / nullif(t2.total_do_bermasalah, 0)) as tiap_do,\n        (\n            case \n                when t1.total_ach_over_120 = 0\n                then (t2.total_do_bermasalah::numeric / ((DATE_TRUNC('month', MAKE_DATE(t1.year, mm.bulan_akhir, 1)) + INTERVAL '1 month - 1 day')::date - MAKE_DATE(t1.year, mm.bulan_awal, 1) + 1))\n                else (t2.total_do_bermasalah::numeric / ((DATE_TRUNC('month', MAKE_DATE(t1.year, mm.bulan_akhir, 1)) + INTERVAL '1 month - 1 day')::date - MAKE_DATE(t1.year, mm.bulan_awal, 1) + 1) * (t1.total_ach_over_120))\n            end\n        ) as jumlah_do_ach_over_120,\n        (\n            case \n                when t1.total_ach_over_120 = 0\n                then (t2.total_do_bermasalah::numeric / ((DATE_TRUNC('month', MAKE_DATE(t1.year, mm.bulan_akhir, 1)) + INTERVAL '1 month - 1 day')::date - MAKE_DATE(t1.year, mm.bulan_awal, 1) + 1)) * (t1.sales_yearly / nullif(t2.total_do_bermasalah, 0))\n                else (t2.total_do_bermasalah::numeric / ((DATE_TRUNC('month', MAKE_DATE(t1.year, mm.bulan_akhir, 1)) + INTERVAL '1 month - 1 day')::date - MAKE_DATE(t1.year, mm.bulan_awal, 1) + 1) * (t1.total_ach_over_120)) * (t1.sales_yearly / nullif(t2.total_do_bermasalah, 0))\n            end\n        ) as total_do_ton,\n        (\n            case \n                when t1.total_ach_over_120 = 0\n                then (t2.total_do_bermasalah::numeric / ((DATE_TRUNC('month', MAKE_DATE(t1.year, mm.bulan_akhir, 1)) + INTERVAL '1 month - 1 day')::date - MAKE_DATE(t1.year, mm.bulan_awal, 1) + 1)) / nullif(t3.total_do, 0)\n                else (t2.total_do_bermasalah::numeric / ((DATE_TRUNC('month', MAKE_DATE(t1.year, mm.bulan_akhir, 1)) + INTERVAL '1 month - 1 day')::date - MAKE_DATE(t1.year, mm.bulan_awal, 1) + 1) * (t1.total_ach_over_120)) / nullif(t3.total_do, 0)\n            end\n        ) as oos_percentage        \n\tfrom Code_Summary_YTD t1\n    inner join Max_Month mm\n    \ton t1.year = mm.year\n    \tand t1.plant = mm.plant\n    \tand t1.business_unit = mm.business_unit\n\tleft join oos_do_bermasalah t2\n\t\ton t1.year = t2.year\n\t\tand t1.plant = t2.plant\n\t\tand t1.business_unit = t2.business_unit\n\t\tand t1.kode_pakan = t2.kode_pakan\n\tleft join oos_total_do t3\n\t\ton t1.year = t3.year\n\t\tand t1.plant = t3.plant\n\t\tand t1.business_unit = t3.business_unit\n\torder by t1.year, t1.plant, t1.business_unit, t1.kode_pakan\n),\nBU_Yearly_OOS as (\n\tselect\n\t\tt1.year,\n\t\tt1.plant,\n\t\tt1.business_unit,\n\t\tsum(t1.kebutuhan_pakan_yearly) as total_kebutuhan_pakan,\n\t\tsum(t1.sales_yearly) as total_sales,\n\t\tsum(t1.hasil_produksi_yearly) as total_produksi,\n\t\tavg(t1.rata_rata_kirim) as avg_rata_rata_kirim,\n\t\tmax(t1.total_do) as total_do,\n\t\tsum(t1.tiap_do) as total_tiap_do,\n\t\tsum(t1.jumlah_do_ach_over_120) as total_do_ach_over_120,\n\t\tsum(t1.total_do_ton) as total_do_ton,\n\t\tsum(t1.oos_percentage) as total_oos_percentage\n\tfrom Code_Summary_YTD_2 t1\n\tgroup by \n\t\tt1.year, \n\t\tt1.plant, \n\t\tt1.business_unit\n),\n\nFinal_Report as (\n\tselect\n\t\tt1.plant,\n\t\tt1.business_unit,\n\t\tt1.year,\n\t\t\n        SUM(CASE WHEN t1.month = 1 THEN t1.total_oos_percentage ELSE NULL END) AS Jan,\n        SUM(CASE WHEN t1.month = 2 THEN t1.total_oos_percentage ELSE NULL END) AS Feb,\n        SUM(CASE WHEN t1.month = 3 THEN t1.total_oos_percentage ELSE NULL END) AS Mar,\n        SUM(CASE WHEN t1.month = 4 THEN t1.total_oos_percentage ELSE NULL END) AS Apr,\n        SUM(CASE WHEN t1.month = 5 THEN t1.total_oos_percentage ELSE NULL END) AS May,\n        SUM(CASE WHEN t1.month = 6 THEN t1.total_oos_percentage ELSE NULL END) AS Jun,\n        SUM(CASE WHEN t1.month = 7 THEN t1.total_oos_percentage ELSE NULL END) AS Jul,\n        SUM(CASE WHEN t1.month = 8 THEN t1.total_oos_percentage ELSE NULL END) AS Aug,\n        SUM(CASE WHEN t1.month = 9 THEN t1.total_oos_percentage ELSE NULL END) AS Sep,\n        SUM(CASE WHEN t1.month = 10 THEN t1.total_oos_percentage ELSE NULL END) AS Oct,\n        SUM(CASE WHEN t1.month = 11 THEN t1.total_oos_percentage ELSE NULL END) AS Nov,\n        SUM(CASE WHEN t1.month = 12 THEN t1.total_oos_percentage ELSE NULL END) AS Dec\n        \n    FROM\n        BU_Monthly_OOS t1\n    GROUP BY\n        t1.plant, t1.business_unit, t1.year\t\t\n)\n\nselect\n\tt1.*,\n\tt2.total_oos_percentage as total_oos_percentage_ytd\nfrom Final_Report t1\ninner join BU_Yearly_OOS t2 \n\ton t1.year = t2.year\n\tand t1.plant = t2.plant\n\tand t1.business_unit = t2.business_unit\norder by\n\tt1.year,\n\tt1.plant,\n\tt1.business_unit\n",
+      "name": "oos_plant_performance_detail_monthly",
+      "schema": "public",
+      "isExisting": false,
+      "materialized": false
+    }
+  },
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
