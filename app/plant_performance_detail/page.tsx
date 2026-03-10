@@ -46,7 +46,7 @@ export default async function PerformanceDetailPage({
 
               <div className="relative h-24 md:h-32 w-auto overflow-hidden flex-shrink-0">
                 <img 
-                  src="/oos_2.png"
+                  src="/oos_2.PNG"
                   alt="Logo" 
                   className="h-full w-auto object-contain object-left opacity-20"
                 />

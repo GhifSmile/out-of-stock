@@ -52,16 +52,6 @@ export default async function ExecutiveSummary({
     currentMonthForMoM = latestMonth || (new Date().getMonth() + 1);
   }
 
-  // const[overallOOS, fishOOS, shrimpOOS, submissionStatus, monthlyTrend, plantComparison, kodePakanOOS] = await Promise.all([
-  //   OOSService.getOverallOOS(filters),
-  //   OOSService.getFishOOS(filters),
-  //   OOSService.getShrimpOOS(filters),
-  //   OOSService.getSubmissionStatus(filters),
-  //   OOSService.getMonthlyTrendData(filters),
-  //   OOSService.getPlantComparison(filters),
-  //   OOSService.getOOSByKodePakan(filters)
-  // ]);
-
   const [rawData, submissionStatus] = await Promise.all([
     OOSService.getOOSData(filters),
     OOSService.getSubmissionStatus(filters)
