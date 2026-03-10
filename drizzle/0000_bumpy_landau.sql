@@ -1,3 +1,35 @@
+CREATE TABLE "out_of_stock" (
+	"year" integer,
+	"month" integer,
+	"week" integer,
+	"plant" varchar(50),
+	"business_unit" varchar(50),
+	"kode_pakan" varchar(50),
+	"stock_pakan" numeric,
+	"kebutuhan_pakan" numeric,
+	"kirim" numeric,
+	"hasil_produksi" numeric,
+	"total_hari_oos" numeric,
+	"created_at" timestamp
+);
+--> statement-breakpoint
+CREATE TABLE "out_of_stock_do_bermasalah" (
+	"year" integer,
+	"month" integer,
+	"plant" varchar(50),
+	"business_unit" varchar(50),
+	"kode_pakan" varchar(50),
+	"total_do_bermasalah" integer
+);
+--> statement-breakpoint
+CREATE TABLE "out_of_stock_total_do" (
+	"year" integer,
+	"month" integer,
+	"plant" varchar(50),
+	"business_unit" varchar(50),
+	"total_do" integer
+);
+--> statement-breakpoint
 CREATE TABLE "users" (
 	"id" varchar(36) PRIMARY KEY NOT NULL,
 	"name" varchar(255),
@@ -16,7 +48,7 @@ with Monthly_Data as (
         t1.business_unit,
         t1.kode_pakan,
         sum(t1.ach_over_120) as total_ach_over_120
-    from oos_final t1
+    from out_of_stock t1
     group by
         t1.year,
         t1.month,
@@ -54,9 +86,9 @@ Monthly_OOS as (
 	select
 		t1.year,
 		t1.month,
-		sum(t1.oos_percentage) as overall_oos_percentage,		
-		(sum(t1.oos_percentage) filter (where t1.business_unit = 'fish')) as fish_oos_percentage,
-		(sum(t1.oos_percentage) filter (where t1.business_unit = 'shrimp')) as shrimp_oos_percentage		
+		round(sum(t1.oos_percentage) * 100, 2) as overall_oos_percentage,		
+		round((sum(t1.oos_percentage) filter (where t1.business_unit = 'fish')) * 100, 2) as fish_oos_percentage,
+		round((sum(t1.oos_percentage) filter (where t1.business_unit = 'shrimp')) * 100, 2) as shrimp_oos_percentage		
 	from Monthly_Data_2 t1
 	group by 
 		t1.year, 
@@ -104,22 +136,6 @@ order by
 	t1.year,
 	t1.month
 );--> statement-breakpoint
-CREATE VIEW "public"."oos_final" AS (
-with final_table as (
-	select
-    	*,
-    	round(oos.kirim / nullif(oos.kebutuhan_pakan, 0) * 100, 0) as ach,
-    	(
-    		case
-    			when round(oos.kirim / nullif(oos.kebutuhan_pakan, 0) * 100, 0) > 120 then 1 
-    			else 0
-    		end
-    	) as ach_over_120
-	from out_of_stock oos
-)
-
-select * from final_table
-);--> statement-breakpoint
 CREATE VIEW "public"."oos_plant_performance_detail_monthly" AS (
 with Code_Summary as (
     select
@@ -133,7 +149,7 @@ with Code_Summary as (
         sum(t1.hasil_produksi) as hasil_produksi_monthly,
         avg(t1.kirim) as rata_rata_kirim,
         sum(t1.ach_over_120) as total_ach_over_120
-    from oos_final t1
+    from out_of_stock t1
     group by
         t1.year,
         t1.month,
@@ -196,7 +212,7 @@ BU_Monthly_OOS as (
 		sum(t1.tiap_do) as total_tiap_do,
 		sum(t1.jumlah_do_ach_over_120) as total_do_ach_over_120,
 		sum(t1.total_do_ton) as total_do_ton,
-		sum(t1.oos_percentage) as total_oos_percentage
+		round(sum(t1.oos_percentage) * 100, 2) as total_oos_percentage
 	from Code_Summary_2 t1
 	group by 
 		t1.year, 
@@ -255,7 +271,7 @@ Code_Summary_YTD as (
         sum(t1.hasil_produksi) as hasil_produksi_yearly,
         avg(t1.kirim) as rata_rata_kirim,
         sum(t1.ach_over_120) as total_ach_over_120
-    from oos_final t1
+    from out_of_stock t1
     inner join Max_Month mm
     	on t1.year = mm.year
     	and t1.plant = mm.plant
@@ -323,7 +339,7 @@ BU_Yearly_OOS as (
 		sum(t1.tiap_do) as total_tiap_do,
 		sum(t1.jumlah_do_ach_over_120) as total_do_ach_over_120,
 		sum(t1.total_do_ton) as total_do_ton,
-		sum(t1.oos_percentage) as total_oos_percentage
+		round(sum(t1.oos_percentage) * 100, 2) as total_oos_percentage
 	from Code_Summary_YTD_2 t1
 	group by 
 		t1.year, 
