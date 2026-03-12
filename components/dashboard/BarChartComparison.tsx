@@ -15,7 +15,6 @@ export default function ComparisonBarChart({ data }: Props) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
-  // --- LOGIKA INTERAKTIF PERBAIKAN ---
   const handleBarClick = useCallback((item: any) => {
     // Di Recharts, saat onClick di taruh di <Bar />, datanya ada di item.payload
     if (item && item.plant) {
@@ -71,14 +70,12 @@ export default function ComparisonBarChart({ data }: Props) {
               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
               itemSorter={(item) => tooltipOrder.indexOf(item.name as string)}
               formatter={(value: number | string | undefined, labelName: any) => {
-                const numericValue = Number(value);
-                if (!value || numericValue === 0) return [null, null];
+                if (value === null || value === undefined) {
+                  return null;
+                }
                 
-                const formattedValue = numericValue.toFixed(2);
-                return [`${formattedValue}`, labelName];
-                // if (typeof value === 'undefined') return ["0.0", labelName];
-                // const formattedValue = Number(value).toFixed(1);
-                // return [`${formattedValue}`, labelName];
+                const formattedValue = Number(value).toFixed(2);
+                return [`${formattedValue}%`, labelName];
               }}
             />           
             

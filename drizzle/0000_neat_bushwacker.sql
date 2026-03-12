@@ -1,61 +1,45 @@
-import { pgTable, integer, varchar, numeric, serial, boolean, text, timestamp, pgView } from "drizzle-orm/pg-core"
-import { sql } from "drizzle-orm"
-
-export const outofStock = pgTable("out_of_stock", {
-    year: integer(),
-    month: integer(),
-    week: integer(),
-    plant: varchar({ length: 50 }),
-    business_unit: varchar({ length: 50 }),
-    kode_pakan: varchar({ length: 50 }),
-    stock_pakan: numeric(),
-    kebutuhan_pakan: numeric(),
-    kirim: numeric(),
-    hasil_produksi: numeric(),
-	total_hari_oos: numeric(),
-    created_at: timestamp({
-      mode: "date",
-    }),
-});
-
-export const outofStockDOBermasalah = pgTable("out_of_stock_do_bermasalah", {
-    year: integer(),
-    month: integer(),
-    plant: varchar({ length: 50 }),
-    business_unit: varchar({ length: 50 }),
-    kode_pakan: varchar({ length: 50 }),
-	total_do_bermasalah: integer(),
-});
-
-export const outofStockTotalDO = pgTable("out_of_stock_total_do", {
-    year: integer(),
-    month: integer(),
-    plant: varchar({ length: 50 }),
-    business_unit: varchar({ length: 50 }),
-	total_do: integer(),
-});
-
-export const users = pgTable("users", {
-  id: varchar({ length: 36 }).primaryKey(),
-
-  name: varchar({ length: 255 }),
-
-  email: varchar({ length: 255 }).notNull().unique(),
-
-  role: varchar({ length: 20 }).default("officer"),
-
-  created_at: timestamp({ mode: "date" }).defaultNow(),
-});
-
-export const oosAnalysisMonthly = pgView("oos_trend_analysis_monthly", { 
-    year: integer(),
-    month: integer(),
-    overall_oos_percentage: numeric(),
-    fish_oos_percentage: numeric(),
-    shrimp_oos_percentage: numeric(),
-    best_performing: text(),
-    worst_performing: text(),
-}).as(sql`
+CREATE TABLE "out_of_stock" (
+	"year" integer,
+	"month" integer,
+	"week" integer,
+	"plant" varchar(50),
+	"business_unit" varchar(50),
+	"kode_pakan" varchar(50),
+	"stock_pakan" numeric,
+	"kebutuhan_pakan" numeric,
+	"kirim" numeric,
+	"hasil_produksi" numeric,
+	"total_hari_oos" numeric,
+	"created_at" timestamp
+);
+--> statement-breakpoint
+CREATE TABLE "out_of_stock_do_bermasalah" (
+	"year" integer,
+	"month" integer,
+	"plant" varchar(50),
+	"business_unit" varchar(50),
+	"kode_pakan" varchar(50),
+	"total_do_bermasalah" integer
+);
+--> statement-breakpoint
+CREATE TABLE "out_of_stock_total_do" (
+	"year" integer,
+	"month" integer,
+	"plant" varchar(50),
+	"business_unit" varchar(50),
+	"total_do" integer
+);
+--> statement-breakpoint
+CREATE TABLE "users" (
+	"id" varchar(36) PRIMARY KEY NOT NULL,
+	"name" varchar(255),
+	"email" varchar(255) NOT NULL,
+	"role" varchar(20) DEFAULT 'officer',
+	"created_at" timestamp DEFAULT now(),
+	CONSTRAINT "users_email_unique" UNIQUE("email")
+);
+--> statement-breakpoint
+CREATE VIEW "public"."oos_trend_analysis_monthly" AS (
 with Monthly_Data as (
 	select
 		t1.year,
@@ -240,26 +224,8 @@ left join Aggregated_Best_Worst t2
 order by 
 	t1.year, 
 	t1.month
-`);
-
-export const plantPerformanceDetailMonthly = pgView("oos_plant_performance_detail_monthly", {
-    plant: varchar({ length: 50 }),
-    business_unit: varchar({ length: 50 }),
-    year: integer(),
-    jan: numeric(),
-    feb: numeric(),
-    mar: numeric(),
-    apr: numeric(),
-    may: numeric(),
-    jun: numeric(),
-    jul: numeric(),
-    aug: numeric(),
-    sep: numeric(),
-    oct: numeric(),
-    nov: numeric(),
-    dec: numeric(),
-    total_oos_percentage_ytd: numeric(),
-}).as(sql`
+);--> statement-breakpoint
+CREATE VIEW "public"."oos_plant_performance_detail_monthly" AS (
 with Code_Summary as (
     select
         t1.year,
@@ -537,4 +503,4 @@ order by
 	t1.year,
 	t1.plant,
 	t1.business_unit
-`);
+);

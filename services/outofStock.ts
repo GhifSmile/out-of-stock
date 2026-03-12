@@ -77,7 +77,7 @@ interface OOSResult {
 export interface OOSByPakanResult {
   business_unit: string;
   kode_pakan: string;
-  oos: number;
+  oos: number | null;
 }
 
 export interface MonthlyPerformanceData {
@@ -100,14 +100,14 @@ export interface TrendAnalysisData {
 
 export interface MonthlyTrendData {
   month: string;
-  overallOOS: number;
+  overallOOS: number | null;
 }
 
 export interface PlantComparisonData {
   plant: string;
-  overallOOS: number;
-  fishOOS: number;
-  shrimpOOS: number;
+  overallOOS: number | null;
+  fishOOS: number | null;
+  shrimpOOS: number | null;
 }
 
 export interface PlantSubmissionStatus {
@@ -123,9 +123,9 @@ const monthNames = [
   "July", "August", "September", "October", "November", "December"
 ];
 
-function calculateOOSByUnit(data: OOSResult, businessUnitFilter: string | null = null): number {
+function calculateOOSByUnit(data: OOSResult, businessUnitFilter: string | null = null): number | null{
   if (!data?.oosData || data.oosData.length === 0) {
-    return 0;
+    return null;
   }
 
   const filteredDays = businessUnitFilter 
@@ -145,7 +145,7 @@ function calculateOOSByUnit(data: OOSResult, businessUnitFilter: string | null =
     totalDays += new Date(year, month, 0).getDate();
   });
 
-  if (totalDays === 0) return 0;  
+  if (totalDays === 0) return null;  
 
   const doBermasalahMap = new Map<string, number>();
   data.doBermasalah.forEach(db => {
@@ -165,7 +165,7 @@ function calculateOOSByUnit(data: OOSResult, businessUnitFilter: string | null =
     : data.totalDo;
   const grandTotalDo = filteredTotalDo.reduce((acc, row) => acc + (Number(row.total_do) || 0), 0);
 
-  if (grandTotalDo === 0) return 0;
+  if (grandTotalDo === 0) return null;
 
   const groupedData = new Map<string, {
     year: number,
@@ -193,23 +193,30 @@ function calculateOOSByUnit(data: OOSResult, businessUnitFilter: string | null =
     }
   });
 
+  let hasValidCalculation = false;
   let totalOOSPercentage = 0;
 
   groupedData.forEach((record) => {
     const totalDoBermasalah = doBermasalahMap.get(record.kode_pakan) || 0;
-    const tiap_do = totalDoBermasalah > 0 ? record.sales_monthly / totalDoBermasalah : 0;
 
+    if (totalDoBermasalah === 0) return;
+
+    // const tiap_do = record.sales_monthly / totalDoBermasalah;
     let rowOosPercentage = 0;
   
     if (record.year === 2025) {
-      rowOosPercentage = (tiap_do / totalDays) / grandTotalDo;
+      // rowOosPercentage = (tiap_do / totalDays) / grandTotalDo;
+      rowOosPercentage = (totalDoBermasalah / totalDays) / grandTotalDo;
     } else {
-      rowOosPercentage = ((tiap_do / totalDays) * record.total_hari_oos) / grandTotalDo;
+      // rowOosPercentage = ((tiap_do / totalDays) * record.total_hari_oos) / grandTotalDo;
+      rowOosPercentage = ((totalDoBermasalah / totalDays) * record.total_hari_oos) / grandTotalDo;
     }
 
     totalOOSPercentage += rowOosPercentage;
+    hasValidCalculation = true;
   });
 
+  if (!hasValidCalculation && groupedData.size === 0) return null;
   return Number((totalOOSPercentage * 100).toFixed(2));
 }
 
@@ -234,11 +241,11 @@ export const OOSUtils = {
       const monthTotalDO = rawData.totalDo.filter(d => Number(d.month) === monthNumber);
 
       if (monthOOS.length === 0) {
-        return { month: name, overallOOS: 0 };
+        return { month: name, overallOOS: null };
       }
 
       const grandTotalDo = monthTotalDO.reduce((acc, row) => acc + (Number(row.total_do) || 0), 0);
-      if (grandTotalDo === 0) return { month: name, overallOOS: 0 };
+      if (grandTotalDo === 0) return { month: name, overallOOS: null };
 
       const doBermasalahMap = new Map<string, number>();
       monthDOB.forEach(db => {
@@ -275,21 +282,32 @@ export const OOSUtils = {
         }
       });
 
+      let hasValidCalculation = false;
       let totalOOSPercentage = 0;
 
-      grouped.forEach((val, key) => {
+      grouped.forEach((val) => {
         const totalDoBermasalah = doBermasalahMap.get(val.kode_pakan) || 0;
-        const tiap_do = totalDoBermasalah > 0 ? val.sales_monthly / totalDoBermasalah : 0;
+
+        if (totalDoBermasalah === 0) return;
+
+        // const tiap_do = val.sales_monthly / totalDoBermasalah;
         const daysInMonth = getDaysInMonth(val.year, val.month);
 
         let rowOos = 0;
         if (val.year === 2025) {
-          rowOos = (tiap_do / daysInMonth) / grandTotalDo;
+          // rowOos = (tiap_do / daysInMonth) / grandTotalDo;
+          rowOos = (totalDoBermasalah / daysInMonth) / grandTotalDo;
         } else {
-          rowOos = ((tiap_do / daysInMonth) * val.total_hari_oos) / grandTotalDo;
+          // rowOos = ((tiap_do / daysInMonth) * val.total_hari_oos) / grandTotalDo;
+          rowOos = ((totalDoBermasalah / daysInMonth) * val.total_hari_oos) / grandTotalDo;
         }
         totalOOSPercentage += rowOos;
+        hasValidCalculation = true;
       });
+
+      if (!hasValidCalculation) {
+        return { month: name, overallOOS: null };
+      }
 
       return {
         month: name,
@@ -309,7 +327,7 @@ export const OOSUtils = {
     dataDOB: any[], 
     dataTotalDO: any[], 
     businessUnit: string | null
-    ) => {      
+    ): number | null => {      
       // Filter berdasarkan Business Unit jika diminta (fish/shrimp)
       const filteredDataOOS = businessUnit 
         ? dataOOS.filter(d => d.business_unit?.toLowerCase() === businessUnit.toLowerCase())
@@ -321,7 +339,7 @@ export const OOSUtils = {
         ? dataTotalDO.filter(d => d.business_unit?.toLowerCase() === businessUnit.toLowerCase())
         : dataTotalDO;
 
-      if (filteredDataOOS.length === 0) return 0;
+      if (filteredDataOOS.length === 0) return null;
 
       const uniqueYearMonths = new Set<string>();
       for (const row of filteredDataOOS) {
@@ -336,7 +354,7 @@ export const OOSUtils = {
         totalDays += new Date(year, month, 0).getDate();
       });
     
-      if (totalDays === 0) return 0;          
+      if (totalDays === 0) return null;          
 
       const doBermasalahMap = new Map<string, number>();
       filteredDataDOB.forEach(db => {  
@@ -350,7 +368,7 @@ export const OOSUtils = {
       });      
 
       const grandTotalDo = filteredDataTotalDO.reduce((acc, row) => acc + (Number(row.total_do) || 0), 0);
-      if (grandTotalDo === 0) return 0;
+      if (grandTotalDo === 0) return null;
 
       const groupedData = new Map<string, {
         year: number, kode_pakan: string,
@@ -373,21 +391,30 @@ export const OOSUtils = {
       });
 
       let totalOOSPercentage = 0;
+      let hasValidCalculation = false;
 
       groupedData.forEach((record) => {
 
         const totalDoBermasalah = doBermasalahMap.get(record.kode_pakan) || 0;
-        const tiap_do = totalDoBermasalah > 0 ? record.sales_monthly / totalDoBermasalah : 0;
-      
+
+        if (totalDoBermasalah === 0) return;
+
+        // const tiap_do = record.sales_monthly / totalDoBermasalah
         let rowOosPercentage = 0;
+
         if (record.year === 2025) {
-          rowOosPercentage = (tiap_do / totalDays) / grandTotalDo;
+          // rowOosPercentage = (tiap_do / totalDays) / grandTotalDo;
+          rowOosPercentage = (totalDoBermasalah / totalDays) / grandTotalDo;
         } else {
-          rowOosPercentage = ((tiap_do / totalDays) * record.total_hari_oos) / grandTotalDo;
+          // rowOosPercentage = ((tiap_do / totalDays) * record.total_hari_oos) / grandTotalDo;
+          rowOosPercentage = ((totalDoBermasalah / totalDays) * record.total_hari_oos) / grandTotalDo;
         }
       
         totalOOSPercentage += rowOosPercentage;
+        hasValidCalculation = true;
       });        
+
+      if (!hasValidCalculation) return null;
 
       return Number((totalOOSPercentage * 100).toFixed(2));
 
@@ -478,26 +505,32 @@ export const OOSUtils = {
       const mapKey = `${record.business_unit}|${record.kode_pakan}`;
       const totalDoBermasalah = doBermasalahMap.get(mapKey) || 0;
       const totalDoUnit = totalDoByUnitMap.get(record.business_unit) || 0;
-      const tiap_do = totalDoBermasalah > 0 ? record.sales_monthly / totalDoBermasalah : 0;
-
-      let rowOosValue = 0;
       
-      if (record.year === 2025) {
-        rowOosValue = (tiap_do / totalDays) / totalDoUnit;
-      } else {
-        rowOosValue = ((tiap_do / totalDays) * record.total_hari_oos) / totalDoUnit;
+      let oosFinalValue: number | null = null;
+      
+      if (totalDoUnit > 0) {
+        // const tiap_do = totalDoBermasalah > 0 ? record.sales_monthly / totalDoBermasalah : 0;
+        let rowOosValue = 0;
+        
+        if (record.year === 2025) {
+          // rowOosValue = (tiap_do / totalDays) / totalDoUnit;
+          rowOosValue = (totalDoBermasalah / totalDays) / totalDoUnit;
+        } else {
+          // rowOosValue = ((tiap_do / totalDays) * record.total_hari_oos) / totalDoUnit;
+          rowOosValue = ((totalDoBermasalah / totalDays) * record.total_hari_oos) / totalDoUnit;
+        }
+        oosFinalValue = Number((rowOosValue * 100).toFixed(2));
       }
 
       results.push({
-        // Format label untuk visualisasi: "business_unit - kode_pakan"
         label: `${record.business_unit} - ${record.kode_pakan}`,
         business_unit: record.business_unit,
         kode_pakan: record.kode_pakan,
-        oos: Number((rowOosValue * 100).toFixed(2))
+        oos: oosFinalValue
       });
     });
 
-    return results.sort((a, b) => b.oos - a.oos);    
+    return results.sort((a, b) => (b.oos ?? -1) - (a.oos ?? -1));   
   }
 };
 

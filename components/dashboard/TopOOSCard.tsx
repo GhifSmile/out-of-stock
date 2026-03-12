@@ -9,9 +9,11 @@ interface Props {
 }
 
 export default function TopOOSCard({ data }: Props) {
-  // Ambil top 3 OOS terbesar
+
+  const hasValidData = data.some(item => item.oos !== null);
+
   const top3 = [...data]
-    .sort((a, b) => b.oos - a.oos)
+    .sort((a, b) => (b.oos ?? -1) - (a.oos ?? -1))
     .slice(0, 3);
 
   return (
@@ -25,12 +27,10 @@ export default function TopOOSCard({ data }: Props) {
           </div>
 
           <div>
-            {/* Title - Sesuai template DOI */}
             <h3 className="text-[12px] font-bold text-black tracking-widest leading-none mb-5">
               Top 3 Out of Stock
             </h3>
             
-            {/* List Detail: Menggunakan konten OOS sebelumnya dengan spacing DOI */}
             <div className="space-y-4">
               {top3.length > 0 ? (
                 top3.map((item, index) => (
@@ -50,9 +50,11 @@ export default function TopOOSCard({ data }: Props) {
                     <div className="flex items-center gap-2">
                       <div className="text-right">
                         <span className="text-2xl font-bold text-slate-800 tracking-tight">
-                          {item.oos}
+                          {item.oos === null ? "-" : item.oos.toFixed(2)}
                         </span>
-                        <span className="text-[12px] font-bold text-slate-400 ml-1">%</span>
+                        {item.oos !== null && (
+                          <span className="text-[12px] font-bold text-slate-400 ml-1">%</span>
+                        )}
                       </div>
                       <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#ca7bfc] transition-colors" />
                     </div>

@@ -62,7 +62,7 @@ export default async function ExecutiveSummary({
   const shrimpOOS = OOSUtils.calculateShrimp(rawData);
   const monthlyTrend = OOSUtils.computeMonthlyTrend(rawData);
   const plantComparison = OOSUtils.computePlantComparison(rawData);
-  const kodePakanOOS = OOSUtils.computeOOSByPakan(rawData);  
+  const kodePakanOOS = OOSUtils.computeOOSByPakan(rawData);
 
   return (
     <main className="min-h-screen bg-slate-50">

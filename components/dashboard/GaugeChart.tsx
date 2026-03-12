@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 const GaugeComponent = dynamic(() => import('react-gauge-component'), { ssr: false });
 
 interface Props {
-  value: number;
+  value: number | null;
   title: string;
   type: 'overall' | 'fish' | 'shrimp';
   year: number;
@@ -50,7 +50,7 @@ export default function GaugeChart({ value, title, type , year}: Props) {
 
       <CardContent className="h-[200] flex flex-col items-center justify-center">
         <GaugeComponent
-          value={value}
+          value={value ?? 0.0}
           maxValue={2.0}
           type="radial"
           style={{ 
@@ -60,11 +60,12 @@ export default function GaugeChart({ value, title, type , year}: Props) {
             }}
           labels={{
             valueLabel: {
-                formatTextValue: (val: number) => `${val.toFixed(2)}`,
+                formatTextValue: () => value === null ? "-" : value.toFixed(2),
                 style: {
                     fill: "#000000",  
                     textShadow: "none", 
                     fontWeight: "bold",
+                    fontSize: value === null ? 40: 35,
               }
             },
             tickLabels: {
@@ -102,8 +103,6 @@ export default function GaugeChart({ value, title, type , year}: Props) {
             length: 0.75,            
           }}
         />
-        {/* Label Angka di Bawah Gauge */}
-        {/* <div className="text-2xl font-bold text-slate-900 -mt-4">{value}%</div> */}
       </CardContent>
     </Card>
   );

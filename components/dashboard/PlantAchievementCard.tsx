@@ -13,11 +13,12 @@ interface Props {
 export default function PlantAchievementCard({ data, year }: Props) {
   const maxTarget = 1.0
 
-  // Hitung pencapaian berdasarkan fishTurnover dan shrimpTurnover
   const achievedCount = data.reduce((acc, p) => {
     let count = 0;
-    if (p.fishOOS && p.fishOOS > 0 && p.fishOOS <= maxTarget) count++;
-    if (p.shrimpOOS && p.shrimpOOS > 0 && p.shrimpOOS <= maxTarget) count++;
+    
+    if (p.fishOOS !== null && p.fishOOS <= maxTarget) count++;
+    if (p.shrimpOOS !== null && p.shrimpOOS <= maxTarget) count++;
+    
     return acc + count;
   }, 0);
 

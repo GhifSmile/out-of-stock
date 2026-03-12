@@ -95,7 +95,7 @@ export default function TrendOOSChartMonthly({ data, year }: Props) {
               cursor={{fill: '#f8fafc'}}
               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
               formatter={(value: number | string | undefined, labelName: any) => {
-                if (value === undefined) return ["0.0", labelName ?? "Out of Stock"];
+                if (value === null || value === undefined) return ["-", labelName ?? "Out of Stock"];
                 const formattedValue = Number(value).toFixed(2);
                 return [`${formattedValue}`, labelName];
               }}  
@@ -117,28 +117,35 @@ export default function TrendOOSChartMonthly({ data, year }: Props) {
               type="linear" 
               dataKey="overallOOS" 
               stroke="#4bc0f2" 
-              dot={{ 
-                  r: 4,               // Ukuran radius titik
-                  fill: "#4bc0f2",    // Warna isi titik (samakan dengan stroke)
-                  strokeWidth: 0,     // Menghilangkan border agar terlihat full solid
-                  fillOpacity: 1      // Memastikan warna titik tidak transparan
-                }}
+              connectNulls={true}
+              activeDot={(props: any) => {
+                const { cx, cy, stroke, strokeWidth, r, value } = props;
+              
+                if (value === null || value === undefined) return <></>;
+        
+                return (
+                  <circle 
+                    cx={cx} 
+                    cy={cy} 
+                    r={r || 6} 
+                    fill="#4bc0f2" 
+                    stroke={stroke} 
+                    strokeWidth={strokeWidth} 
+                  />
+                );
+              }}             
+              dot={(props: any) => {
+                const { cx, cy, payload, value } = props;
+                if (value === null || value === undefined || payload.overallOOS === null) {
+                  return null;
+                }
+                return <circle key={`dot-${payload.month}`} cx={cx} cy={cy} r={4} fill="#4bc0f2" stroke="none" />;
+              }}            
               fillOpacity={1} 
               fill="url(#colorOOS)" 
               strokeWidth={2} 
               name="Overall Out of Stock"
-              activeDot={{ r: 6 }} // Feedback saat hover
             />
-
-            {/* <Line 
-              type="linear" 
-              dataKey="LowerBound" 
-              stroke="#f2a977" 
-              strokeDasharray="5 5" 
-              strokeWidth={1.5} 
-              dot={false} 
-              name="Lower Bound"
-            />         */}
 
             <Line 
               type="linear" 
@@ -149,16 +156,6 @@ export default function TrendOOSChartMonthly({ data, year }: Props) {
               dot={false} 
               name="Target Out of Stock"
             />       
-
-            {/* <Line 
-              type="linear" 
-              dataKey="UpperBound" 
-              stroke="#f2a977" 
-              strokeDasharray="5 5" 
-              strokeWidth={1.5} 
-              dot={false} 
-              name="Upper Bound"
-            />                                      */}
       
           </AreaChart>
         </ResponsiveContainer>
