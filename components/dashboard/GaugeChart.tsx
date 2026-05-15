@@ -12,32 +12,38 @@ interface Props {
   year: number;
 }
 
-export default function GaugeChart({ value, title, type , year}: Props) {
+export default function GaugeChart({ value, title, type ,year}: Props) {
 
   const getArcConfig = () => {
-    switch (type) {
-      case 'overall':
-        return [
-          { limit: 1.0, color: '#02d1a7'},
+    if (year >= 2026) {
+      switch (type) {
+          case 'overall':
+          case 'fish':
+          case 'shrimp':
+            return [
+          { limit: 2.0, color: '#02d1a7'},
         //   { limit: 1.0, color: '#4bc0f2'},          
-          { limit: 2.0, color: '#f04487' },
+          { limit: 3.0, color: '#f04487' },
         ];
-      case 'fish':
-        return [
-          { limit: 1.0, color: '#02d1a7'},
-        //   { limit: 1.0, color: '#4bc0f2'},          
-          { limit: 2.0, color: '#f04487' },
-        ];
-      case 'shrimp':
-        return [
-          { limit: 1.0, color: '#02d1a7'},
-        //   { limit: 1.0, color: '#4bc0f2'},          
+      default:
+        return [];
+      }
+    } else {
+      switch (type) {
+          case 'overall':
+          case 'fish':
+          case 'shrimp':
+            return [
+          { limit: 1.0, color: '#02d1a7'},        
           { limit: 2.0, color: '#f04487' },
         ];
       default:
         return [];
+      }      
     }
-  };
+  }
+
+  const currentTicks = getArcConfig().map(arc => ({ value: arc.limit }));
 
   return (
     <Card className="bg-white border-none shadow-sm">
@@ -51,7 +57,7 @@ export default function GaugeChart({ value, title, type , year}: Props) {
       <CardContent className="h-[200] flex flex-col items-center justify-center">
         <GaugeComponent
           value={value ?? 0.0}
-          maxValue={2.0}
+          maxValue={year < 2026 ? 2.0: 3.0}
           type="radial"
           style={{ 
               width: "100%", 
@@ -78,13 +84,7 @@ export default function GaugeChart({ value, title, type , year}: Props) {
                     fontSize: 7,
                 }
               },
-              ticks: [
-                { value: 0.0 },
-                { value: 0.5 },
-                { value: 1.0 },
-                { value: 1.5 },
-                { value: 2.0 },
-              ]
+              ticks: currentTicks
             }
           }}
           arc={{

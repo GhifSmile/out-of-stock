@@ -11,16 +11,69 @@ interface Props {
 }
 
 export default function PlantAchievementCard({ data, year }: Props) {
-  const maxTarget = 1.0
+  // const maxTarget = 1.0
+
+  const plantThresholds = {
+    'MDN fish': {
+      optimal: 2.75,
+    },
+    'MDN shrimp': {
+      optimal: 1.20,
+    },
+    'LPG fish': {
+      optimal: 0.50,
+    },
+    'LPG shrimp': {
+      optimal: 2.50,
+    },
+    'CKP fish': {
+      optimal: 0.50,
+    },
+    'SPJ fish': {
+      optimal: 4.00,
+    },
+    'SBY shrimp': {
+      optimal: 0.50,
+    },                                                                                                                                                                                          
+  }   
+
+  type ThresholdData = typeof plantThresholds;
 
   const achievedCount = data.reduce((acc, p) => {
     let count = 0;
-    
-    if (p.fishOOS !== null && p.fishOOS <= maxTarget) count++;
-    if (p.shrimpOOS !== null && p.shrimpOOS <= maxTarget) count++;
-    
+
+    if (year >= 2026) {
+      const getOptimalRange = (plant: string, type: string) => {
+        const key = `${plant} ${type}`;
+        const fallbackKey = `${plant} ${type === 'fish' ? 'shrimp' : 'fish'}`;
+
+        const thresholds = plantThresholds as Record<string, any>;
+        const threshold = thresholds[key] || thresholds[fallbackKey];
+
+        return threshold 
+          ? { max: threshold.optimal } 
+          : { max: null };
+      };
+
+      const fishRange = getOptimalRange(p.plant, 'fish');
+      const shrimpRange = getOptimalRange(p.plant, 'shrimp');
+
+      if (p.fishOOS !== null && p.fishOOS <= fishRange.max) {
+        count++;
+      }
+      if (p.shrimpOOS !== null && p.shrimpOOS <= shrimpRange.max) {
+        count++;
+      }
+
+    } else {
+      const maxTarget = 1.0;
+
+      if (p.fishOOS !== null && p.fishOOS <= maxTarget) count++;
+      if (p.shrimpOOS !== null && p.shrimpOOS <= maxTarget) count++;
+    }
+
     return acc + count;
-  }, 0);
+  }, 0);    
 
   const TOTAL_PLANTS = 7;
   

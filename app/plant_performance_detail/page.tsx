@@ -110,31 +110,91 @@ export default async function PerformanceDetailPage({
                 {performanceData.length > 0 ? (
                   performanceData.map((row, idx) => {
 
-                    const target = row.year >= 2026 
-                      ? 1.0 
-                      : 1.0;
+                    // const target = row.year >= 2026 
+                    //   ? 1.0 
+                    //   : 1.0;
 
+                    const plantThresholds = {
+                      'MDN fish': {
+                        optimal: 2.75,
+                      },
+                      'MDN shrimp': {
+                        optimal: 1.20,
+                      },
+                      'LPG fish': {
+                        optimal: 0.50,
+                      },
+                      'LPG shrimp': {
+                        optimal: 2.50,
+                      },
+                      'CKP fish': {
+                        optimal: 0.50,
+                      },
+                      'SPJ fish': {
+                        optimal: 4.00,
+                      },
+                      'SBY shrimp': {
+                        optimal: 0.50,
+                      },                                                                                                                                                                                          
+                    }      
+                    
+                    const key = `${row.plant} ${row.businessUnit}`;
+                    const thresholds = plantThresholds[key as keyof typeof plantThresholds];
                     const ytd = row.total_oos_percentage_ytd;
-                    const vsT = ytd - target
+                    // const vsT = ytd - target
 
-                    const vsTargetPercent = vsT;
+                    // const vsTargetPercent = vsT;
 
+                    let vsT: string | number = 0;
                     let statusEmoji = "";
                     let actionText = "";
                     let colorClass = "";
 
-                    if(ytd > 1.0) {
-                      statusEmoji = "🔴";
-                      actionText = "Supply Disruption : Disruption in Fulfilling Orders to Customers";
-                      colorClass = "text-red-500";
-                    } else if (ytd == 1.0) {
-                      statusEmoji = "🔵";
-                      actionText = "Optimal Supply";
-                      colorClass = "text-blue-600";
-                    } else if (ytd < 1.0) {
-                      statusEmoji = "🟢";
-                      actionText = "Excellence: High Service Level";
-                      colorClass = "text-green-600";                      
+                    if (row.year >= 2026) {
+                        if (!thresholds) {
+                            statusEmoji = "⚪";
+                            actionText = "Threshold Not Found";
+                            colorClass = "text-gray-400";
+                            vsT = "-";
+                        } else {
+                            if (ytd == thresholds.optimal) {
+                                statusEmoji = "🟢";
+                                actionText = "Optimal Stock";
+                                colorClass = "text-green-600";
+                                vsT = "-";
+                            } else {
+                                vsT = ytd - thresholds.optimal;
+                            
+                                if(ytd > thresholds.optimal) {
+                                  statusEmoji = "🔴";
+                                  actionText = "Supply Disruption : Disruption in Fulfilling Orders to Customers";
+                                  colorClass = "text-red-500";
+                                } else if (ytd < thresholds.optimal) {
+                                  statusEmoji = "🔵";
+                                  actionText = "Excellence: High Service Level";
+                                  colorClass = "text-blue-600";                      
+                                }
+                            }
+                        }
+                    } else {
+                        if (ytd == 1.0) {
+                            statusEmoji = "🟢";
+                            actionText = "Optimal Stock";
+                            colorClass = "text-green-600";
+                            vsT = "-";
+                        } else {
+                            vsT = ytd - 1.0
+                        
+                            if(ytd > 1.0) {
+                              statusEmoji = "🔴";
+                              actionText = "Supply Disruption : Disruption in Fulfilling Orders to Customers";
+                              colorClass = "text-red-500";
+                            } else if (ytd < 1.0) {
+                              statusEmoji = "🔵";
+                              actionText = "Excellence: High Service Level";
+                              colorClass = "text-blue-600";                      
+                            }
+                        }
                     }
 
                     return (
@@ -164,13 +224,15 @@ export default async function PerformanceDetailPage({
                         <td className="px-4 py-3 text-center font-bold border-r border-slate-100 whitespace-nowrap">
                           {(row.total_oos_percentage_ytd).toFixed(2)}
                         </td>
-                        <td className={`px-4 py-3 text-center font-bold border-r border-slate-100 whitespace-nowrap ${colorClass}`}>
-                          {vsT > 0 ? '+' : ''}{vsT.toFixed(2)}
+                        <td className={`px-4 py-3 text-center font-bold border-r border-slate-100 whitespace-nowrap ${typeof vsT === 'number' ? colorClass : 'text-slate-400'}`}>
+                          {typeof vsT === 'number' 
+                            ? (vsT > 0 ? `+${vsT.toFixed(2)}` : vsT.toFixed(2)) 
+                            : vsT}
                         </td>
                         <td className="px-4 py-3 text-center text-lg leading-none border-r border-slate-100">
                           {statusEmoji}
                         </td>
-                        <td className={`px-4 py-3 italic break-words leading-tight font-medium ${colorClass}`}>
+                        <td className={`px-4 py-3 italic break-words leading-tight font-medium ${vsT === '-' ? 'text-green-600' : 'font-medium ' + colorClass}`}>
                           {actionText}
                         </td>
                       </tr>

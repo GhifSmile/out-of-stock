@@ -44,7 +44,7 @@ export default function TrendOOSChartMonthly({ data, year }: Props) {
   const chartData = data.map(item => ({
     ...item,
     // UpperBound: 4,
-    Target: year<2026?1.0: 1.0,
+    Target: year<2026?1.0: 2.0,
     // LowerBound : 2.5
   }));
 
@@ -85,8 +85,8 @@ export default function TrendOOSChartMonthly({ data, year }: Props) {
               tickFormatter={(value) => `${value}`} 
               tickLine={false} 
               axisLine={false} 
-              domain={[0, 2]} 
-              ticks={[0, 0.5, 1.0, 1.5, 2.0]}
+              domain={[0, 4]} 
+              ticks={[0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]}
               fontSize={10}
               className="text-slate-500 font-medium"
             />
