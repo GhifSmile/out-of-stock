@@ -27,7 +27,7 @@ export default function DataSubmissionTracker({ data, currentMonth }: Props) {
             <h3 className="text-[12px] font-bold text-black tracking-widest leading-none uppercase">
               Submission Status
             </h3>
-            <p className="text-[9px] font-light text-slate-400 uppercase tracking-wider mt-1 flex items-center gap-1">
+            <p className="text-[9px] font-light text-slate-400 tracking-wider mt-1 flex items-center gap-1">
               Monthly Data Monitoring
               {currentMonth && (
                 <span className="text-[#4174ff] font-bold ml-1 whitespace-nowrap">

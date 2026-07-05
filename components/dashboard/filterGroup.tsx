@@ -191,7 +191,7 @@ export default function FilterGroup({
 
   return (
     <div ref={containerRef} className="flex flex-wrap items-center justify-center lg:justify-start gap-3 w-full lg:w-auto">
-      {showPlant && <DropdownItem id="plant" label="Plant Group" items={plantsData} />}
+      {showPlant && <DropdownItem id="plant" label="Plant" items={plantsData} />}
       {showBU && <DropdownItem id="business_unit" label="Segment" items={BUData} />}
       {showYear && <DropdownItem id="year" label="Year" items={yearsData} />}
       {showMonth && <DropdownItem id="month" label="Month" items={monthsData} valueKey="id" displayKey="name" />}
