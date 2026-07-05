@@ -547,19 +547,22 @@ export default function ComparisonBarChart({ comparisonByMonth, baselineMonth, d
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const compareParamString = searchParams.get("compare") || "";
+
   // RULES 1: Reset bulan pembanding jika baseline berubah (Misal: User klik Reset/Ganti Filter)
   useEffect(() => {
     if (prevBaselineRef.current !== baselineMonth) {
       // Simpan ref secara langsung agar tidak memicu re-render berulang
       prevBaselineRef.current = baselineMonth;
       
-      const params = new URLSearchParams(searchParams.toString());
+      // const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(window.location.search);
       if (params.has("compare")) {
         params.delete("compare");
         router.replace(`${pathname}?${params.toString()}`, { scroll: false });
       }
     }
-  }, [baselineMonth, router, pathname, searchParams]);
+  }, [baselineMonth, router, pathname]);
 
   // Bulan yang sedang tampil (baseline selalu di index 0)
   const selectedMonths = displayMonths;
@@ -586,15 +589,17 @@ export default function ComparisonBarChart({ comparisonByMonth, baselineMonth, d
   // Tulis bulan pembanding ke URL
   const updateCompareParam = useCallback(
     (months: string[]) => {
-      const params = new URLSearchParams(searchParams.toString());
+      // const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(window.location.search);
       if (months.length > 0) {
         params.set("compare", months.join(","));
       } else {
         params.delete("compare");
       }
-      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+      // router.push(`${pathname}?${params.toString()}`, { scroll: false });
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     },
-    [router, searchParams, pathname],
+    [router, pathname],
   );
 
   const handleAddMonth = (month: string) => {
