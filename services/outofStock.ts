@@ -54,11 +54,11 @@ interface DOProblem {
 };
 
 interface DOTotal {
-    year: number;
-    month: number;
-    plant: string;
-    business_unit: string;
-    total_do: number;
+  year: number;
+  month: number;
+  plant: string;
+  business_unit: string;
+  total_do: number;
 }
 
 interface OOSFilters {

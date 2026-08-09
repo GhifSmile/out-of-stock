@@ -361,9 +361,9 @@ export default async function PerformanceDetailPage({
                         {row.monthlyData.map((m, i) => {
                           let mColor = "text-slate-700";
                           if (m.value === null) mColor = "text-slate-300";
-                          else if (m.value === target) mColor = "text-green-600 font-bold";
-                          else if (m.value > target) mColor = "text-red-500 font-bold";
-                          else mColor = "text-blue-600 font-bold";
+                          else if (m.value === target) mColor = "text-green-600";
+                          else if (m.value > target) mColor = "text-red-500";
+                          else mColor = "text-blue-600";
 
                           return (
                             <td key={i} className={`px-2 py-3 text-center border-r border-slate-100 ${mColor}`}>

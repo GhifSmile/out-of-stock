@@ -285,7 +285,7 @@ export default function TopOOSCard({ data }: Props) {
                       <td className="px-2 py-2.5 text-center">
                         <span
                           className="text-[13px] font-bold tabular-nums"
-                          style={{ color: "#4bc0f2" }}
+                          style={{ color: "#f04487" }}
                         >
                           {item.oos === null ? "-" : `${item.oos.toFixed(2)}%`}
                         </span>
