@@ -359,140 +359,49 @@ BU_Monthly_OOS as (
 		t1.business_unit
 
 ),
-Max_Month as (
+Code_Summary_YTD as (
 	select
 		t1.year,
+		t1.month,
 		t1.plant,
 		t1.business_unit,
-		min(month) as bulan_awal,
-		max(month) as bulan_akhir
-	from Code_Summary t1
+		round(sum(t1.jumlah_do_problem)) as total_jumlah_do_problem,
+		round(sum(t1.total_do_ton) * 1000, 2) as total_total_do_ton,
+		round(sum(t1.oos_percentage) * 100, 2) as total_oos_percentage
+	from Code_Summary_3 t1
 	group by
 		t1.year,
+		t1.month,
 		t1.plant,
 		t1.business_unit
-),
-oos_do_bermasalah as (
-	select
-		t1.year,
-		t1.plant,
-		t1.business_unit,
-		t1.kode_pakan,
-		sum(t1.total_do_bermasalah) as total_do_bermasalah
-	from out_of_stock_do_bermasalah t1
-	group by
-		t1.year,
-		t1.plant,
-		t1.business_unit,
-		t1.kode_pakan
 ),
 oos_total_do as (
-	select
-		t1.year,
-		t1.plant,
-		t1.business_unit,
-		sum(t1.total_do) as total_do
-	from out_of_stock_total_do t1
-	group by
-		t1.year,
-		t1.plant,
-		t1.business_unit
-),
-Code_Summary_YTD as (
 	select 
 		t1.year,
+		t1.month,
 		t1.plant,
 		t1.business_unit,
-		t1.kode_pakan,
-        sum(t1.kebutuhan_pakan) as kebutuhan_pakan_yearly,
-        sum(t1.kirim) as sales_yearly,
-        sum(t1.hasil_produksi) as hasil_produksi_yearly,
-        avg(t1.kirim) as rata_rata_kirim,
-        sum(t1.total_hari_oos) as total_hari_oos
-    from out_of_stock t1
-    inner join Max_Month mm
-    	on t1.year = mm.year
-    	and t1.plant = mm.plant
-    	and t1.business_unit = mm.business_unit
-    where t1.month <= mm.bulan_akhir
-    group by
-        t1.year,
-        t1.plant,
-        t1.business_unit,
-        t1.kode_pakan		
+		t1.total_do
+	from out_of_stock_total_do t1
 ),
 Code_Summary_YTD_2 as (
 	select 
 		t1.*,
-		t2.total_do_bermasalah,
-		t3.total_do,
-		coalesce(t1.sales_yearly / nullif(t2.total_do_bermasalah, 0), 0) as tiap_do_kg,
-		((DATE_TRUNC('month', MAKE_DATE(t1.year, mm.bulan_akhir, 1)) + INTERVAL '1 month - 1 day')::date - MAKE_DATE(t1.year, mm.bulan_awal, 1) + 1) as days_in_year
+		t2.total_do
 	from Code_Summary_YTD t1
-    inner join Max_Month mm
-    	on t1.year = mm.year
-    	and t1.plant = mm.plant
-    	and t1.business_unit = mm.business_unit
-	left join oos_do_bermasalah t2
+	left join oos_total_do t2
 		on t1.year = t2.year
+		and t1.month = t2.month
 		and t1.plant = t2.plant
 		and t1.business_unit = t2.business_unit
-		and t1.kode_pakan = t2.kode_pakan
-	left join oos_total_do t3
-		on t1.year = t3.year
-		and t1.plant = t3.plant
-		and t1.business_unit = t3.business_unit
-	order by 
-		t1.year, 
-		t1.plant, 
-		t1.business_unit, 
-		t1.kode_pakan
-),
-Code_Summary_YTD_3 as (
-	select
-		t1.*,
-		(t1.tiap_do_kg / 1000) as tiap_do_ton,
-		(
-			case
-				when t1.year = 2025
-				then (t1.total_do_bermasalah::numeric / t1.days_in_year)
-				else (t1.total_do_bermasalah::numeric / t1.days_in_year) * t1.total_hari_oos
-			end
-			
-		) as jumlah_do_problem,
-		(
-			case
-				when t1.year = 2025
-				then (t1.total_do_bermasalah::numeric / t1.days_in_year) * t1.tiap_do_kg
-				else ((t1.total_do_bermasalah::numeric / t1.days_in_year) * t1.total_hari_oos) * t1.tiap_do_kg
-			end
-			
-		) as total_do_kg,
-		(
-			case
-				when t1.year = 2025
-				then ((t1.total_do_bermasalah::numeric / t1.days_in_year) * t1.tiap_do_kg) / 1000
-				else (((t1.total_do_bermasalah::numeric / t1.days_in_year) * t1.total_hari_oos) * t1.tiap_do_kg) / 1000
-			end
-			
-		) as total_do_ton,		
-		(
-			case
-				when t1.year = 2025
-				then ((t1.total_do_bermasalah::numeric / t1.days_in_year)) / t1.total_do
-				else ((t1.total_do_bermasalah::numeric / t1.days_in_year) * t1.total_hari_oos) / t1.total_do
-			end
-			
-		) as oos_percentage
-	from Code_Summary_YTD_2 t1
 ),
 BU_Yearly_OOS as (
 	select
 		t1.year,
 		t1.plant,
 		t1.business_unit,
-		round(sum(t1.oos_percentage) * 100, 2) as total_oos_percentage
-	from Code_Summary_YTD_3 t1
+		round(avg(t1.total_oos_percentage), 2) as total_oos_percentage
+	from Code_Summary_YTD_2 t1
 	group by 
 		t1.year, 
 		t1.plant, 
